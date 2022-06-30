@@ -1,5 +1,5 @@
 name: com.dynatrace.extension.snmp-generic-cisco-device
-version: 1.4.4
+version: 1.4.5
 minDynatraceVersion: "1.240"
 author:
   name: Dynatrace
@@ -697,23 +697,14 @@ screens:
           attribute: 
             key: "highspeed"
             displayName: "IF speed (Mbps)"
-          relation: 
-            displayName: "default"
-            entitySelectorTemplate: ""
         - type: ATTRIBUTE
           attribute: 
             key: "type"
             displayName: "IF type"
-          relation: 
-            displayName: "default"
-            entitySelectorTemplate: ""
         - type: ATTRIBUTE
           attribute: 
             key: "opStatus"
             displayName: "Operational status"
-          relation: 
-            displayName: "default"
-            entitySelectorTemplate: ""
         filtering:
           relationships:
           - type(snmp:com_dynatrace_extension_snmp_generic_cisco_device), toRelationships.isChildOf($(entityConditions))
@@ -799,4 +790,3 @@ screens:
           key: highspeed
           displayName: Speed (Mbps)
           unit: MegaBitPerSecond 
-        
