@@ -456,7 +456,7 @@ snmp:
             type: count
 
 dashboards:
-  - path: "generic-cisco-device-dashboard.json"
+  - path: "dashboards/generic-cisco-device-dashboard.json"
 alerts:
   - path: "alerts/inbound_bandwidth_alert.json"
   - path: "alerts/outbound_bandwidth_alert.json"
