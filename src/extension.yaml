@@ -1,5 +1,5 @@
 name: com.dynatrace.extension.snmp-generic-cisco-device
-version: 1.5.0
+version: 1.5.1
 minDynatraceVersion: "1.251"
 author:
   name: Dynatrace
@@ -600,7 +600,7 @@ screens:
             width: FULL_SIZE
           - conditions:
             - "extensionConfigured|extensionId=com.dynatrace.extension.snmp-traps-generic"
-            key: logs_traps_card
+            key: traps_logs
             type: LOGS
             width: FULL_SIZE
     messageCards:
@@ -609,6 +609,14 @@ screens:
         message:
           text: "Set up **SNMP Traps** extension to improve observability of this device"
           theme: INFO
+    logsCards:
+    - displayName: Traps and logs
+      enablePaging: true
+      entitySelectorTemplates: []
+      filterQuery: dt.source_entity inEntitySelector "$(entityConditions)"
+      key: traps_logs
+      pageSize: 10
+      showFiltering: true
     chartsCards:
       - key: "snmp_health"
         displayName: "SNMP Statistics"
@@ -833,7 +841,7 @@ screens:
               - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth
       - key: other
         displayName: Errors and discards  
-        numberOfVisibleCharts: 2  
+        numberOfVisibleCharts: 2 
         charts:
           - displayName: Errors
             visualizationType: GRAPH_CHART
@@ -864,11 +872,3 @@ screens:
           key: highspeed
           displayName: Speed (Mbps)
           unit: MegaBitPerSecond 
-    logsCards:
-    - displayName: Traps and logs
-      enablePaging: true
-      entitySelectorTemplates: []
-      filterQuery: dt.source_entity inEntitySelector "$(entityConditions)"
-      key: logs_traps_card
-      pageSize: 10
-      showFiltering: true
