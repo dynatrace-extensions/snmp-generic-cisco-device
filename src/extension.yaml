@@ -1,6 +1,6 @@
 name: com.dynatrace.extension.snmp-generic-cisco-device
-version: 1.4.6
-minDynatraceVersion: "1.240"
+version: 1.5.0
+minDynatraceVersion: "1.251"
 author:
   name: Dynatrace
 
@@ -498,6 +498,16 @@ topology:
           displayName: Device DNS Name
         requiredDimensions: []
         instanceNamePattern: Cisco network device {sys.name} @ {device.address}:{device.port}
+      - idPattern: snmp_generic_cisco_device_{device.address}
+        sources:
+          - sourceType: Logs
+        attributes: 
+          - pattern: '{device.address}'
+            key: dt.ip_addresses
+            displayName: Device Address
+        requiredDimensions: 
+          - key: log.source
+            valuePattern: '$eq(snmptraps)'
 
     - name: snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface
       displayName: Generic SNMP Cisco Device Network Interface
@@ -583,33 +593,57 @@ screens:
             key: "snmp_health"
           - type: "ENTITIES_LIST"
             key: "network_interfaces"
+          - conditions:
+            - "!extensionConfigured|extensionId=com.dynatrace.extension.snmp-traps-generic"
+            key: snmp_traps_info
+            type: MESSAGE
+            width: FULL_SIZE
+          - conditions:
+            - "extensionConfigured|extensionId=com.dynatrace.extension.snmp-traps-generic"
+            key: logs_traps_card
+            type: LOGS
+            width: FULL_SIZE
+    messageCards:
+      - key: snmp_traps_info
+        type: MESSAGE
+        message:
+          text: "Set up **SNMP Traps** extension to improve observability of this device"
+          theme: INFO
     chartsCards:
       - key: "snmp_health"
         displayName: "SNMP Statistics"
         numberOfVisibleCharts: 4
         charts:
           - displayName: "Request Problems"
-            visualization:
-              themeColor: DEFAULT
-              seriesType: AREA
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.silentdrops.count"
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.versions.count"
+              visualization:
+                themeColor: DEFAULT
+                seriesType: AREA
           - displayName: "SNMP Messages"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.pkts.count"
           - displayName: "PDU Problems"
-            visualization:
-              themeColor: DEFAULT
-              seriesType: COLUMN
-            metrics:
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.values.count"
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.nosuchnames.count"
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              visualization:
+                themeColor: DEFAULT
+                seriesType: COLUMN
+              metrics:
+                - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.values.count"
+                - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.nosuchnames.count"
           - displayName: "Community Problems"
-            visualization:
-              themeColor: DEFAULT
-              seriesType: AREA
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              visualization:
+                themeColor: DEFAULT
+                seriesType: AREA
+              metrics:
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.community.uses.count"
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.community.names.count"
       - key: "network_stats"
@@ -617,35 +651,53 @@ screens:
         numberOfVisibleCharts: 3
         charts:
           - displayName: "Network Interfaces Traffic"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.bitpersec:splitBy()"
               - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.bitpersec:splitBy()"
           - displayName: "Interfaces Bandwidth Utilization"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.bandwidth:splitBy()"
           - displayName: "Overall TCP & UDP Traffic"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.totaltraffic"
           - displayName: "Bandwidth Utilization In & Out"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth:splitBy()"
               - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.bandwidth:splitBy()"
           - displayName: "Overall TCP Traffic"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.total"
           - displayName: "TCP traffic"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.in.segs.count"
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.out.segs.count"
           - displayName: "Overall UDP Traffic"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.total"
           - displayName: "UDP Traffic"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.in.datagrams.count"
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.out.datagrams.count"
           - displayName: "Errors"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.tcp.in.errs.count"
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.udp.in.errors.count"
       - key: "device_stats"
@@ -653,13 +705,19 @@ screens:
         numberOfVisibleCharts: 3
         charts:
           - displayName: "CPU busy"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.total."5min".rev
           - displayName: "CPU load"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.loadavg."5min"
           - displayName: "CPU memory"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.memory.hc.used"
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.memory.hc.free"
       - key: "device_health"
@@ -669,10 +727,14 @@ screens:
           - "extensionConfigured|extensionId=com.dynatrace.extension.snmp-generic-cisco-device|featureSets=Sensors"
         charts:
           - displayName: "Fan temperature"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.envmon.temperature.status.value:splitBy(envmon.temperature.status.descr)"
           - displayName: "Fan state"
-            metrics:
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
               - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.envmon.fan.state:splitBy(envmon.fan.status.descr)"
     entitiesListCards:
       - key: "network_interfaces"
@@ -684,13 +746,17 @@ screens:
         numberOfVisibleCharts: 2
         charts: 
         - displayName: "Traffic"
-          metrics: 
-          - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.bitpersec"
-          - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.bitpersec"
+          visualizationType: GRAPH_CHART
+          graphChartConfig:
+            metrics: 
+            - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.bitpersec"
+            - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.bitpersec"
         - displayName: "Bandwidth"
-          metrics: 
-          - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth"
-          - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.bandwidth"
+          visualizationType: GRAPH_CHART
+          graphChartConfig:
+            metrics: 
+            - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth"
+            - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.bandwidth"
         displayIcons: true
         columns: 
         - type: ATTRIBUTE
@@ -754,25 +820,33 @@ screens:
         numberOfVisibleCharts: 2
         charts:
           - displayName: Traffic
-            metrics:
-            - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.bitpersec
-            - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.bitpersec       
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.bitpersec
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.bitpersec       
           - displayName: Bandwidth utilization
-            metrics:
-            - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.bandwidth
-            - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.bandwidth
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth
       - key: other
         displayName: Errors and discards  
         numberOfVisibleCharts: 2  
         charts:
           - displayName: Errors
-            metrics:
-            - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.out.errors.count
-            - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.in.errors.count
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.out.errors.count
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.in.errors.count
           - displayName: Discards
-            metrics:
-            - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.out.discards.count
-            - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.in.discards.count        
+            visualizationType: GRAPH_CHART
+            graphChartConfig:
+              metrics:
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.out.discards.count
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.in.discards.count        
     propertiesCard:
       displayOnlyConfigured: false
       properties:
@@ -790,3 +864,11 @@ screens:
           key: highspeed
           displayName: Speed (Mbps)
           unit: MegaBitPerSecond 
+    logsCards:
+    - displayName: Traps and logs
+      enablePaging: true
+      entitySelectorTemplates: []
+      filterQuery: dt.source_entity inEntitySelector "$(entityConditions)"
+      key: logs_traps_card
+      pageSize: 10
+      showFiltering: true
