@@ -1,5 +1,5 @@
 name: com.dynatrace.extension.snmp-generic-cisco-device
-version: 1.6.0
+version: 1.7.0
 minDynatraceVersion: "1.251"
 author:
   name: Dynatrace
@@ -576,6 +576,20 @@ topology:
       - sourceType: Logs
 
 screens:
+  - entityType: snmptraps:com_dynatrace_ext_snmp-traps
+    detailsInjections:
+      - type: MESSAGE
+        key: related-cisco-entity
+        width: FULL_SIZE
+        conditions:
+          - relatedEntity|entitySelectorTemplate=type(snmp:com_dynatrace_extension_snmp_generic_cisco_device),fromRelationships.isSameAs($(entityConditions))
+    messageCards:
+      - key: related-cisco-entity
+        type: MESSAGE
+        message:
+          text: "Jump to related [Cisco device](relatedEntityScreen|entitySelectorTemplate=type(snmp:com_dynatrace_extension_snmp_generic_cisco_device),fromRelationships.isSameAs($(entityConditions))|name=Cisco device)"
+          theme: INFO
+
   - entityType: snmp:com_dynatrace_extension_snmp_generic_cisco_device
     propertiesCard:
       properties:
