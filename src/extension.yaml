@@ -1,21 +1,22 @@
 name: com.dynatrace.extension.snmp-generic-cisco-device
-version: 1.7.0
-minDynatraceVersion: "1.251"
+version: 1.8.0
+minEECVersion: "1.251"
+minDynatraceVersion: "1.256"
 author:
   name: Dynatrace
 
 vars:
   - id: ext.activationtag
     displayName: Extension activation tag
-    type: pattern
+    type: text
   - id: if_name
-    type: pattern 
+    type: text 
     displayName: Pattern to filter capturing of Interfaces by Name
   - id: if_admin_status
-    type: pattern
+    type: text
     displayName: Pattern to filter capturing of Interfaces by Admin Status
   - id: if_oper_status
-    type: pattern
+    type: text
     displayName: Pattern to filter capturing of Interfaces by Operational Status
 
 metrics:
@@ -639,6 +640,7 @@ screens:
             key: traps_logs
             type: LOGS
             width: FULL_SIZE
+          - type: "INJECTIONS"
     messageCards:
       - key: snmp_traps_info
         type: MESSAGE
@@ -648,7 +650,6 @@ screens:
     logsCards:
     - displayName: Traps and logs
       enablePaging: true
-      entitySelectorTemplates: []
       filterQuery: dt.source_entity inEntitySelector "$(entityConditions)"
       key: traps_logs
       pageSize: 10
@@ -873,6 +874,7 @@ screens:
           type: CHART_GROUP
         - key: other
           type: CHART_GROUP
+        - type: "INJECTIONS"
       staticContent:
         breadcrumbs:
         - entityType: snmp:com_dynatrace_extension_snmp_generic_cisco_device
