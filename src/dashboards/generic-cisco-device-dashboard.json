@@ -712,14 +712,14 @@
           "id": "C",
           "timeAggregation": "DEFAULT",
           "splitBy": [],
-          "metricSelector": "func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.bitpersec:splitBy():avg:auto",
+          "metricSelector": "func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.bitpersec:splitBy():avg:auto",
           "enabled": true
         },
         {
           "id": "D",
           "timeAggregation": "DEFAULT",
           "splitBy": [],
-          "metricSelector": "func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.bitpersec:splitBy():avg:auto",
+          "metricSelector": "func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.bitpersec:splitBy():avg:auto",
           "enabled": true
         }
       ],
