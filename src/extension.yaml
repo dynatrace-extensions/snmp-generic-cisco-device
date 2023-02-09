@@ -598,10 +598,10 @@ topology:
       sources:
       - sourceType: Entities
         mappingRules:
-          sourceProperty: dt.ip_addresses
-          sourceTransformation: Leave text as-is
-          destinationProperty: dt.ip_addresses
-          destinationTransformation: Leave text as-is
+          - sourceProperty: dt.ip_addresses
+            sourceTransformation: Leave text as-is
+            destinationProperty: dt.ip_addresses
+            destinationTransformation: Leave text as-is
 
 screens:
   - entityType: snmptraps:com_dynatrace_ext_snmp-traps
