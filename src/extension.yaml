@@ -1,6 +1,5 @@
-name: custom:adam-cisco
-#name: com.dynatrace.extension.snmp-generic-cisco-device
-version: 1.13.20
+name: com.dynatrace.extension.snmp-generic-cisco-device
+version: 1.13.0
 minEECVersion: '1.279'
 minDynatraceVersion: '1.279'
 author:
