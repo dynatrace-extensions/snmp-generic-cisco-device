@@ -1,5 +1,6 @@
-name: com.dynatrace.extension.snmp-generic-cisco-device
-version: 1.13.0
+name: custom:adam-cisco
+#name: com.dynatrace.extension.snmp-generic-cisco-device
+version: 1.13.20
 minEECVersion: '1.279'
 minDynatraceVersion: '1.279'
 author:
@@ -741,7 +742,7 @@ screens:
       pageSize: 10
       showFiltering: true
       dqlQueryTable: fetch logs| filter dt.source_entity in [ fetch `dt.entity.snmptraps:com_dynatrace_ext_snmp-traps` | filter in(same_as[`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`], $(entityId))| fields id ]
-      dqlQueryChart: fetch logs| filter dt.source_entity in [ fetch `dt.entity.snmptraps:com_dynatrace_ext_snmp-traps` | filter in(same_as[`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`], $(entityId))| fields id ] | makeTimeseries count = count(), by:{status = content}, interval:5m
+      dqlQueryChart: timeseries count=sum(dt.log.status_per_entity_count), by:{splitField = dt.source_entity} | filter splitField in [ fetch `dt.entity.snmptraps:com_dynatrace_ext_snmp-traps` | filter in(same_as[`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`], $(entityId)) | fields id]
 
     chartsCards:
       - key: traps_stats
