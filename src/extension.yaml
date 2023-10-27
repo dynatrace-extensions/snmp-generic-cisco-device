@@ -1,7 +1,7 @@
 name: com.dynatrace.extension.snmp-generic-cisco-device
-version: 1.12.0
-minEECVersion: "1.251"
-minDynatraceVersion: "1.256"
+version: 1.13.0
+minEECVersion: '1.279'
+minDynatraceVersion: '1.279'
 author:
   name: Dynatrace
 
@@ -10,7 +10,7 @@ vars:
     displayName: Extension activation tag
     type: text
   - id: if_name
-    type: text 
+    type: text
     displayName: Pattern to filter capturing of Interfaces by Name
   - id: if_admin_status
     type: text
@@ -657,22 +657,36 @@ screens:
       - key: related-cisco-entity
         type: MESSAGE
         message:
-          text: "Jump to related [Cisco device](relatedEntityScreen|entitySelectorTemplate=type(snmp:com_dynatrace_extension_snmp_generic_cisco_device),fromRelationships.isSameAs($(entityConditions))|name=Cisco device)"
+          text: Jump to related [Cisco device](relatedEntityScreen|entitySelectorTemplate=type(snmp:com_dynatrace_extension_snmp_generic_cisco_device),fromRelationships.isSameAs($(entityConditions))|name=Cisco device)
           theme: INFO
 
   - entityType: snmp:com_dynatrace_extension_snmp_generic_cisco_device
     propertiesCard:
+    - target: PLATFORM
+      dqlQuery:
+        query: fetch `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device` | filter id == $(entityId) | fields system_name, system_contact
+      properties:
+        - type: DQL
+          dql:
+            field: system_name
+            displayName: Name
+        - type: DQL
+          dql:
+            field: system_contact
+            displayName: System contact
+    - target: CLASSIC
       properties:
         - type: ATTRIBUTE
           attribute:
             key: system_name
             displayName: Name
-        - type: ATTRIBUTE #hide this one as we already display name
+        - type: ATTRIBUTE     #hide this one as we already display name
           attribute:
             key: dt.dns_names
             displayName: DNS name
             hidden: true
     detailsSettings:
+      target: BOTH  #  TODO - layout will be applied to both gens. You may want to duplicate the details settings and provide separeate objects for 2nd and 3rd gen
       staticContent:
         breadcrumbs:
           - entityType: snmp:com_dynatrace_extension_snmp_generic_cisco_device
@@ -685,46 +699,54 @@ screens:
       layout:
         autoGenerate: false
         cards:
-          - type: "CHART_GROUP"
-            key: "device_stats"
-          - type: "CHART_GROUP"
-            key: "device_health"
-          - type: "CHART_GROUP"
-            key: "network_stats"
-          - type: "CHART_GROUP"
-            key: "snmp_health"
-          - type: "ENTITIES_LIST"
-            key: "network_interfaces"
+          - type: CHART_GROUP
+            key: device_stats
+          - type: CHART_GROUP
+            key: device_health
+          - type: CHART_GROUP
+            key: network_stats
+          - type: CHART_GROUP
+            key: snmp_health
+          - type: ENTITIES_LIST
+            key: network_interfaces
+          - type: DQL_TABLE
+            key: network_interfaces_dql
           - conditions:
-            - "!extensionConfigured|extensionId=com.dynatrace.extension.snmp-traps-generic"
+            - '!extensionConfigured|extensionId=com.dynatrace.extension.snmp-traps-generic'
             key: snmp_traps_info
             type: MESSAGE
             width: FULL_SIZE
-          - type: "CHART_GROUP"
+          - type: CHART_GROUP
             key: traps_stats
             conditions:
-            - "extensionConfigured|extensionId=com.dynatrace.extension.snmp-traps-generic"
+            - extensionConfigured|extensionId=com.dynatrace.extension.snmp-traps-generic
           - conditions:
-            - "extensionConfigured|extensionId=com.dynatrace.extension.snmp-traps-generic"
+            - extensionConfigured|extensionId=com.dynatrace.extension.snmp-traps-generic
             key: traps_logs
             type: LOGS
             width: FULL_SIZE
-          - type: "INJECTIONS"
+          - type: INJECTIONS
     messageCards:
       - key: snmp_traps_info
         type: MESSAGE
         message:
-          text: "Set up [SNMP Traps](hubExtension|extensionId=com.dynatrace.extension.snmp-traps-generic|text=SNMP Traps) extension to improve observability of this device"
+          text: Set up [SNMP Traps](hubExtension|extensionId=com.dynatrace.extension.snmp-traps-generic|text=SNMP Traps) extension to improve observability of this device
           theme: INFO
     logsCards:
     - displayName: Traps and logs
+      target: BOTH
       enablePaging: true
       filterQuery: dt.source_entity inEntitySelector "type(snmptraps:com_dynatrace_ext_snmp-traps),toRelationships.isSameAs($(entityConditions))"
       key: traps_logs
       pageSize: 10
       showFiltering: true
+      dqlQueryTable: fetch logs| filter dt.source_entity in [ fetch `dt.entity.snmptraps:com_dynatrace_ext_snmp-traps` | filter in(same_as[`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`], $(entityId))| fields id ]
+      dqlQueryChart: fetch logs| filter dt.source_entity in [ fetch `dt.entity.snmptraps:com_dynatrace_ext_snmp-traps` | filter in(same_as[`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`], $(entityId))| fields id ] | makeTimeseries count = count(), by:{status = content}, interval:5m
+
     chartsCards:
       - key: traps_stats
+        target: BOTH
+        mode: NORMAL
         entitySelectorTemplate: type(snmptraps:com_dynatrace_ext_snmp-traps),toRelationships.isSameAs($(entityConditions))
         charts:
         - conditions: []
@@ -732,6 +754,7 @@ screens:
           graphChartConfig:
             metrics:
               - metricSelector: com.dynatrace.extension.snmp-traps-generic.traps.count:splitBy()
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-traps-generic.traps.count`)  # TODO - query was not enriched with entity filter - check it manually.
                 visualization:
                   displayName: Traps count
                   seriesType: COLUMN
@@ -742,6 +765,7 @@ screens:
           graphChartConfig:
             metrics:
               - metricSelector: com.dynatrace.extension.snmp-traps-generic.traps.count:splitBy("trapoid")
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-traps-generic.traps.count`),by:{trapoid}  # TODO - query was not enriched with entity filter - check it manually.
                 visualization:
                   seriesType: COLUMN
             stacked: true
@@ -750,173 +774,245 @@ screens:
         conditions: []
         displayName: Traps Statistics
         numberOfVisibleCharts: 2
-      - key: "snmp_health"
-        displayName: "SNMP Statistics"
+      - key: snmp_health
+        target: BOTH
+        mode: NORMAL
+        displayName: SNMP Statistics
         numberOfVisibleCharts: 4
         charts:
-          - displayName: "Request Problems"
+          - displayName: Request Problems
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.silentdrops.count"
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.versions.count"
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.snmp.silentdrops.count
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.snmp.silentdrops.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.versions.count
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.versions.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
               visualization:
                 themeColor: DEFAULT
                 seriesType: AREA
-          - displayName: "SNMP Messages"
+          - displayName: SNMP Messages
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.pkts.count"
-          - displayName: "PDU Problems"
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.pkts.count
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.pkts.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+          - displayName: PDU Problems
             visualizationType: GRAPH_CHART
             graphChartConfig:
               visualization:
                 themeColor: DEFAULT
                 seriesType: COLUMN
               metrics:
-                - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.values.count"
-                - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.nosuchnames.count"
-          - displayName: "Community Problems"
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.values.count
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.values.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.nosuchnames.count
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.nosuchnames.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+          - displayName: Community Problems
             visualizationType: GRAPH_CHART
             graphChartConfig:
               visualization:
                 themeColor: DEFAULT
                 seriesType: AREA
               metrics:
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.community.uses.count"
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.community.names.count"
-      - key: "network_stats"
-        displayName: "Network Statistics"
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.community.uses.count
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.community.uses.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+              - metricSelector: 
+                  com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.community.names.count
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.snmp.in.bad.community.names.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+      - key: network_stats
+        target: BOTH
+        mode: NORMAL
+        displayName: Network Statistics
         numberOfVisibleCharts: 3
         charts:
-          - displayName: "Network Interfaces Traffic"
+          - displayName: Network Interfaces Traffic
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.bitpersec:splitBy()"
-              - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.bitpersec:splitBy()"
-          - displayName: "Interfaces Bandwidth Utilization"
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.bitpersec:splitBy()
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.count`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}|fieldsAdd
+                  expression=count[]*8/toDouble(interval/1s)|fieldsRemove count|summarize 
+                  expression=sum(expression[]),interval=takeAny(interval),timeframe=takeAny(timeframe),by:{}  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL
+                  #  ->! manually adjusted with '/toDouble(interval/1s)'
+              - metricSelector: 
+                  func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.bitpersec:splitBy()
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.count`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}|fieldsAdd
+                  expression=count[]*8/toDouble(interval/1s)|fieldsRemove count|summarize 
+                  expression=sum(expression[]),interval=takeAny(interval),timeframe=takeAny(timeframe),by:{}  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL
+                  #  ->! manually adjusted with '/toDouble(interval/1s)'
+          - displayName: Interfaces Bandwidth Utilization
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.bandwidth:splitBy()"
-          - displayName: "Overall TCP & UDP Traffic"
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.bandwidth:splitBy()
+                dqlQuery: timeseries 
+                  in.octets.count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.count`),out.octets.count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.count`),highspeed=avg(`com.dynatrace.extension.snmp-generic-cisco-device.if.highspeed`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}|fieldsAdd
+                  expression=(((in.octets.count[]*8)+(out.octets.count[]*8))/(highspeed[]*1000000))*100/toDouble(interval/1s)|fieldsRemove
+                  in.octets.count,out.octets.count,highspeed|summarize 
+                  expression=sum(expression[]),interval=takeAny(interval),timeframe=takeAny(timeframe),by:{}  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL, rate is not supported for DQL
+                  # ->! manually adjusted with '/toDouble(interval/1s)'
+          - displayName: Overall TCP & UDP Traffic
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.totaltraffic"
-          - displayName: "Bandwidth Utilization In & Out"
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.totaltraffic
+                dqlQuery: timeseries 
+                  in.datagrams.count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.in.datagrams.count`),out.datagrams.count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.out.datagrams.count`),in.segs.count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.in.segs.count`),out.segs.count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.out.segs.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}|fieldsAdd
+                  expression=in.datagrams.count[]+out.datagrams.count[]+in.segs.count[]+out.segs.count[]|fieldsRemove
+                  in.datagrams.count,out.datagrams.count,in.segs.count,out.segs.count
+          - displayName: Bandwidth Utilization In & Out
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth:splitBy()"
-              - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.bandwidth:splitBy()"
-          - displayName: "Overall TCP Traffic"
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth:splitBy()
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.count`),highspeed=avg(`com.dynatrace.extension.snmp-generic-cisco-device.if.highspeed`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}|fieldsAdd
+                  expression=((count[]*8)/(highspeed[]*1000000))*100/toDouble(interval/1s)|fieldsRemove count,highspeed|summarize
+                  expression=sum(expression[]),interval=takeAny(interval),timeframe=takeAny(timeframe),by:{}  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL
+                  # ->! manually adjusted with '/toDouble(interval/1s)'
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.bandwidth:splitBy()
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.count`),highspeed=avg(`com.dynatrace.extension.snmp-generic-cisco-device.if.highspeed`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}|fieldsAdd
+                  expression=((count[]*8)/(highspeed[]*1000000))*100/toDouble(interval/1s)|fieldsRemove count,highspeed|summarize
+                  expression=sum(expression[]),interval=takeAny(interval),timeframe=takeAny(timeframe),by:{}  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL
+                  # -> ! manually adjusted with '/toDouble(interval/1s)'
+          - displayName: Overall TCP Traffic
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.total"
-          - displayName: "TCP traffic"
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.total
+                dqlQuery: timeseries 
+                  in.segs.count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.in.segs.count`),out.segs.count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.out.segs.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}|fieldsAdd
+                  expression=in.segs.count[]+out.segs.count[]|fieldsRemove in.segs.count,out.segs.count
+          - displayName: TCP traffic
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.in.segs.count"
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.out.segs.count"
-          - displayName: "Overall UDP Traffic"
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.in.segs.count
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.in.segs.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.out.segs.count
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.tcp.hc.out.segs.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+          - displayName: Overall UDP Traffic
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.total"
-          - displayName: "UDP Traffic"
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.total
+                dqlQuery: timeseries 
+                  in.datagrams.count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.in.datagrams.count`),out.datagrams.count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.out.datagrams.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}|fieldsAdd
+                  expression=in.datagrams.count[]+out.datagrams.count[]|fieldsRemove in.datagrams.count,out.datagrams.count
+          - displayName: UDP Traffic
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.in.datagrams.count"
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.out.datagrams.count"
-          - displayName: "Errors"
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.in.datagrams.count
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.in.datagrams.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.out.datagrams.count
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.udp.hc.out.datagrams.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+          - displayName: Errors
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.tcp.in.errs.count"
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.udp.in.errors.count"
-      - key: "device_stats"
-        displayName: "Device Statistics"
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.tcp.in.errs.count
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.tcp.in.errs.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.udp.in.errors.count
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.udp.in.errors.count`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+      - key: device_stats
+        target: BOTH
+        mode: NORMAL
+        displayName: Device Statistics
         numberOfVisibleCharts: 3
         charts:
-          - displayName: "CPU busy"
+          - displayName: CPU busy
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
               - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.total."5min".rev
-          - displayName: "CPU load"
+                dqlQuery: timeseries rev=avg(`com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.total.5min.rev`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+          - displayName: CPU load
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
               - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.loadavg."5min"
-          - displayName: "CPU memory"
+                dqlQuery: timeseries avg(`com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.loadavg.5min`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+          - displayName: CPU memory
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.memory.hc.used"
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.memory.hc.free"
-      - key: "device_health"
-        displayName: "Device Health"
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.memory.hc.used
+                dqlQuery: timeseries used=avg(`com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.memory.hc.used`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.memory.hc.free
+                dqlQuery: timeseries free=avg(`com.dynatrace.extension.snmp-generic-cisco-device.cpm.cpu.memory.hc.free`),by:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,sys.contact,device.address,device.name,dt.metrics.source,device.port,device,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`==$(entityId)}
+      - key: device_health
+        target: BOTH
+        mode: NORMAL
+        displayName: Device Health
         numberOfVisibleCharts: 2
         conditions:
-          - "extensionConfigured|extensionId=com.dynatrace.extension.snmp-generic-cisco-device|featureSets=Sensors"
+        - extensionConfigured|extensionId=com.dynatrace.extension.snmp-generic-cisco-device|featureSets=Sensors
         charts:
-          - displayName: "Fan temperature"
+          - displayName: Fan temperature
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.envmon.temperature.status.value:splitBy(envmon.temperature.status.descr)"
-          - displayName: "Fan state"
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.envmon.temperature.status.value:splitBy(envmon.temperature.status.descr)
+                dqlQuery: timeseries  value=avg(`com.dynatrace.extension.snmp-generic-cisco-device.envmon.temperature.status.value`),by:{envmon.temperature.status.descr}  # TODO - query was not enriched with entity filter - check it manually.
+          - displayName: Fan state
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: "com.dynatrace.extension.snmp-generic-cisco-device.envmon.fan.state:splitBy(envmon.fan.status.descr)"
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.envmon.fan.state:splitBy(envmon.fan.status.descr)
+                dqlQuery: timeseries  state=avg(`com.dynatrace.extension.snmp-generic-cisco-device.envmon.fan.state`),by:{envmon.fan.status.descr}  # TODO - query was not enriched with entity filter - check it manually.
     entitiesListCards:
-      - key: "network_interfaces"
-        displayName: "Network Interfaces"
-        entitySelectorTemplate: "type(snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface), fromRelationships.isChildOf($(entityConditions))"
+      - key: network_interfaces
+        displayName: Network Interfaces
+        entitySelectorTemplate: type(snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface), fromRelationships.isChildOf($(entityConditions))
         pageSize: 10
         displayCharts: true
         enableDetailsExpandability: true
         numberOfVisibleCharts: 2
-        charts: 
-        - displayName: "Traffic 64-bit"
+        charts:
+        - displayName: Traffic 64-bit
           visualizationType: GRAPH_CHART
           graphChartConfig:
-            metrics: 
-            - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.bitpersec"
-            - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.bitpersec"
-        - displayName: "Bandwidth"
+            metrics:
+            - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.bitpersec
+            - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.bitpersec
+        - displayName: Bandwidth
           visualizationType: GRAPH_CHART
           graphChartConfig:
-            metrics: 
-            - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth"
-            - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.bandwidth"
-        - displayName: "Traffic 32-bit"
+            metrics:
+            - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth
+            - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.bandwidth
+        - displayName: Traffic 32-bit
           visualizationType: GRAPH_CHART
           graphChartConfig:
-            metrics: 
-            - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.bitpersec"
-            - metricSelector: "func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.bitpersec"
+            metrics:
+            - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.bitpersec
+            - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.bitpersec
         displayIcons: true
-        columns: 
+        columns:
         - type: ATTRIBUTE
-          attribute: 
-            key: "highspeed"
-            displayName: "IF speed (Mbps)"
+          attribute:
+            key: highspeed
+            displayName: IF speed (Mbps)
         - type: ATTRIBUTE
-          attribute: 
-            key: "type"
-            displayName: "IF type"
+          attribute:
+            key: type
+            displayName: IF type
         - type: ATTRIBUTE
-          attribute: 
-            key: "opStatus"
-            displayName: "Operational status"
+          attribute:
+            key: opStatus
+            displayName: Operational status
         filtering:
           relationships:
           - type(snmp:com_dynatrace_extension_snmp_generic_cisco_device), toRelationships.isChildOf($(entityConditions))
@@ -939,9 +1035,155 @@ screens:
               modifier: contains
               defaultSearch: false
               distinct: true
+    dqlTableCards:
+    - key: network_interfaces_dql
+      displayName: Network Interfaces
+      query:
+        query: fetch `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`| filter child_of[`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`]
+          == $(entityId) | fields name = record(entityId=id, displayName=entity.name), highspeed, opStatus, type, id
+        lookups:
+        - query: 'timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.count`),
+            by: { `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`}|
+            fieldsAdd tmp=(count[]*8)/toDouble(interval/1s)|fieldsAdd trafficOut = arrayLast(tmp)|fieldsRemove count'
+          sourceField: id
+          lookupField: "`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`"
+          fields:
+          - trafficOut
+        - query: 'timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.count`),
+            by: { `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`}|
+            fieldsAdd tmp=(count[]*8)/toDouble(interval/1s)|fieldsAdd trafficIn = arrayLast(tmp)| fieldsRemove count'
+          sourceField: id
+          lookupField: "`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`"
+          fields:
+          - trafficIn
+        - query: ' timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.count`),
+            highspeed=avg(`com.dynatrace.extension.snmp-generic-cisco-device.if.highspeed`),
+            by: { `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,
+            `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`}| fieldsAdd
+            expression=((count[]*8)/(highspeed[]*1000000))*100| fieldsAdd bandwidthOut
+            = arrayLast(expression)| fieldsRemove count, highspeed'
+          sourceField: id
+          lookupField: "`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`"
+          fields:
+          - bandwidthOut
+        - query: ' timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.count`),
+            highspeed=avg(`com.dynatrace.extension.snmp-generic-cisco-device.if.highspeed`),
+            by: { `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,
+            `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`}| fieldsAdd
+            expression=((count[]*8)/(highspeed[]*1000000))*100| fieldsAdd bandwidthIn
+            = arrayLast(expression)| fieldsRemove count, highspeed'
+          sourceField: id
+          lookupField: "`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`"
+          fields:
+          - bandwidthIn
+        - query: 'timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.count`),
+            by: { `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`}|
+            fieldsAdd tmp=(count[]*8)/toDouble(interval/1s)|fieldsAdd trafficOut32 = arrayLast(tmp)
+            | fieldsRemove count'
+          sourceField: id
+          lookupField: "`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`"
+          fields:
+          - trafficOut32
+        - query: 'timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.count`),
+            by: { `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`}|
+            fieldsAdd tmp=(count[]*8)/toDouble(interval/1s)|fieldsAdd trafficIn32 = arrayLast(tmp)
+            | fieldsRemove count'
+          sourceField: id
+          lookupField: "`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`"
+          fields:
+          - trafficIn32
+      perspectives:
+        - name: Traffic 64-bit
+          columns:
+            - field: highspeed
+            - field: type
+            - field: opStatus
+            - field: trafficOut
+            - field: trafficIn
+            - field: bandwidthOut
+            - field: bandwidthIn
+        - name: Traffic 32-bit
+          columns:
+            - field: highspeed
+            - field: type
+            - field: opStatus
+            - field: trafficOut32
+            - field: trafficIn32
+      columns:
+      - field: name
+        displayName: Name
+        columnType: TEXT
+        widthType: AUTO
+        defaultColumn: false
+        resizable: true
+        sortable: true
+      - field: highspeed
+        displayName: IF speed
+        columnType: TEXT
+        widthType: AUTO
+        defaultColumn: false
+        resizable: true
+        sortable: true
+      - field: type
+        displayName: IF type
+        columnType: TEXT
+        widthType: AUTO
+        defaultColumn: false
+        resizable: true
+        sortable: true
+      - field: opStatus
+        displayName: Operational status
+        columnType: TEXT
+        widthType: AUTO
+        defaultColumn: false
+        resizable: true
+        sortable: true
+      - field: trafficOut
+        displayName: Traffic Out 64-bit
+        columnType: NUMBER
+        widthType: AUTO
+        defaultColumn: false
+        resizable: true
+        sortable: true
+      - field: trafficIn
+        displayName: Traffic In 64-bit
+        columnType: NUMBER
+        widthType: AUTO
+        defaultColumn: false
+        resizable: true
+        sortable: true
+      - field: bandwidthOut
+        displayName: Outbound bandwidth utilization
+        columnType: NUMBER
+        widthType: AUTO
+        defaultColumn: false
+        resizable: true
+        sortable: true
+      - field: bandwidthIn
+        displayName: Inbound bandwidth utilization
+        columnType: NUMBER
+        widthType: AUTO
+        defaultColumn: false
+        resizable: true
+        sortable: true
+      - field: trafficOut32
+        displayName: Traffic Out 32-bit
+        columnType: NUMBER
+        widthType: AUTO
+        defaultColumn: false
+        resizable: true
+        sortable: true
+      - field: trafficIn32
+        displayName: Traffic In 32-bit
+        columnType: NUMBER
+        widthType: AUTO
+        defaultColumn: false
+        resizable: true
+        sortable: true
 
   - entityType: snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface
     detailsSettings:
+      target: BOTH  #  TODO - layout will be applied to both gens. You may want to duplicate the details settings and provide separeate objects for 2nd and 3rd gen
       layout:
         autoGenerate: false
         cards:
@@ -949,13 +1191,26 @@ screens:
           type: CHART_GROUP
         - key: other
           type: CHART_GROUP
-        - type: "INJECTIONS"
+        - type: INJECTIONS
       staticContent:
         breadcrumbs:
         - entityType: snmp:com_dynatrace_extension_snmp_generic_cisco_device
           type: ENTITY_LIST_REF
-        - entitySelectorTemplate: type(snmp:com_dynatrace_extension_snmp_generic_cisco_device),toRelationships.isChildOf($(entityConditions))
+        - entitySelectorTemplate: 
+            type(snmp:com_dynatrace_extension_snmp_generic_cisco_device),toRelationships.isChildOf($(entityConditions))
           type: ENTITY_REF
+        - type: PLATFORM_ENTITY
+          dqlField: device.relation_record
+        breadcrumbsDqlQuery:
+          query: fetch `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`|
+            filter id == "CUSTOM_DEVICE-8359387C03A90E86"| fields device.id = child_of[`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`]
+          lookups:
+          - query: fetch `dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`|
+              fields id, device.relation_record = record(entityId = id, displayName = entity.name)
+            sourceField: device.id
+            lookupField: id
+            fields:
+            - device.relation_record
         showAddTag: true
         showGlobalFilter: false
         showProblems: true
@@ -963,6 +1218,8 @@ screens:
         showTags: true
     chartsCards:
       - key: traffic
+        target: BOTH
+        mode: NORMAL
         displayName: Interface traffic
         numberOfVisibleCharts: 2
         charts:
@@ -970,50 +1227,82 @@ screens:
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
-              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.bitpersec
-              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.bitpersec      
+              - metricSelector: 
+                  func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.bitpersec
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.count`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`==$(entityId)}|fieldsAdd
+                  expression=count[]*8/toDouble(interval/1s)|fieldsRemove count  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL
+                  #  ->! manually adjusted with '/toDouble(interval/1s)'
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.bitpersec
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.count`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`==$(entityId)}|fieldsAdd
+                  expression=count[]*8/toDouble(interval/1s)|fieldsRemove count  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL
+                  #  ->! manually adjusted with '/toDouble(interval/1s)'
           - displayName: Bandwidth utilization
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
               - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.bandwidth
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.out.octets.count`),highspeed=avg(`com.dynatrace.extension.snmp-generic-cisco-device.if.highspeed`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`==$(entityId)}|fieldsAdd
+                  expression=((count[]*8)/(highspeed[]*1000000))*100/toDouble(interval/1s)|fieldsRemove count,highspeed  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL
+                  #  ->! manually adjusted with '/toDouble(interval/1s)'
               - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.bandwidth
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.hc.in.octets.count`),highspeed=avg(`com.dynatrace.extension.snmp-generic-cisco-device.if.highspeed`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`==$(entityId)}|fieldsAdd
+                  expression=((count[]*8)/(highspeed[]*1000000))*100/toDouble(interval/1s)|fieldsRemove count,highspeed  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL
+                  #  ->! manually adjusted with '/toDouble(interval/1s)'
           - displayName: Traffic 32-bit
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
               - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.bitpersec
-              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.bitpersec      
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.out.octets.count`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`==$(entityId)}|fieldsAdd
+                  expression=count[]*8/toDouble(interval/1s)|fieldsRemove count  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL
+                  #  ->! manually adjusted with '/toDouble(interval/1s)'
+              - metricSelector: func:com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.bitpersec
+                dqlQuery: timeseries 
+                  count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.in.octets.count`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`==$(entityId)}|fieldsAdd
+                  expression=count[]*8/toDouble(interval/1s)|fieldsRemove count  # TODO - transpiled returned PARTIAL_SUCCESS, warnings: rate is not supported for DQL
+                  #  ->! manually adjusted with '/toDouble(interval/1s)'
       - key: other
-        displayName: Errors and discards  
-        numberOfVisibleCharts: 2 
+        target: BOTH
+        mode: NORMAL
+        displayName: Errors and discards
+        numberOfVisibleCharts: 2
         charts:
           - displayName: Errors
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
               - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.out.errors.count
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.out.errors.count`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`==$(entityId)}
               - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.in.errors.count
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.in.errors.count`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`==$(entityId)}
           - displayName: Discards
             visualizationType: GRAPH_CHART
             graphChartConfig:
               metrics:
               - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.out.discards.count
-              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.in.discards.count        
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.out.discards.count`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`==$(entityId)}
+              - metricSelector: com.dynatrace.extension.snmp-generic-cisco-device.if.in.discards.count
+                dqlQuery: timeseries count=sum(`com.dynatrace.extension.snmp-generic-cisco-device.if.in.discards.count`),by:{if.operstatus,sys.contact,device.address,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`,dt.metrics.source,if.speed,device.port,if.idx,if.highspeed,if.type,`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_device`,if.descr,device.name,if.adminstatus,device,if.mtu,if.promiscuousmode,sys.name},filter:{`dt.entity.snmp:com_dynatrace_extension_snmp_generic_cisco_network_interface`==$(entityId)}
     propertiesCard:
       displayOnlyConfigured: false
       properties:
       - type: RELATION
         relation:
           displayName: Device
-          entitySelectorTemplate: type(snmp:com_dynatrace_extension_snmp_generic_cisco_device),toRelationships.isChildOf($(entityConditions))
+          entitySelectorTemplate: 
+            type(snmp:com_dynatrace_extension_snmp_generic_cisco_device),toRelationships.isChildOf($(entityConditions))
       - type: ATTRIBUTE
         attribute:
           key: speed
           displayName: Speed
           hidden: true
       - type: ATTRIBUTE
-        attribute: 
+        attribute:
           key: highspeed
           displayName: Speed (Mbps)
-          unit: MegaBitPerSecond 
+          unit: MegaBitPerSecond
